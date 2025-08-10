@@ -1,0 +1,143 @@
+<template>
+  <div>
+    <!-- ... other template content ... -->
+
+    <!-- Updated chart title text -->
+    <div class="mb-2 font-medium">五行占比（基于档案八字）</div>
+    <!-- ... five elements chart ... -->
+  </div>
+</template>
+
+<script lang="ts" setup>
+import { computed, ref, watch } from 'vue';
+import dayjs from 'dayjs';
+import solarLunar from 'some-solar-lunar-lib'; // placeholder for actual import
+import { toTrueSolar } from 'some-true-solar-util'; // placeholder for actual import
+
+// ... other imports and code ...
+
+// Example: hour pillar helpers
+function getHourPillar(dayStem: string, hour: number) {
+  // ... implementation ...
+}
+
+// —— 五行映射：天干/地支 → 五行索引（0金 1木 2水 3火 4土）——
+const elemIdx: Record<'金'|'木'|'水'|'火'|'土', number> = { '金':0,'木':1,'水':2,'火':3,'土':4 };
+const stemElem: Record<string, number> = {
+  '甲': elemIdx['木'], '乙': elemIdx['木'],
+  '丙': elemIdx['火'], '丁': elemIdx['火'],
+  '戊': elemIdx['土'], '己': elemIdx['土'],
+  '庚': elemIdx['金'], '辛': elemIdx['金'],
+  '壬': elemIdx['水'], '癸': elemIdx['水'],
+};
+const branchElem: Record<string, number> = {
+  '子': elemIdx['水'], '丑': elemIdx['土'], '寅': elemIdx['木'], '卯': elemIdx['木'],
+  '辰': elemIdx['土'], '巳': elemIdx['火'], '午': elemIdx['火'], '未': elemIdx['土'],
+  '申': elemIdx['金'], '酉': elemIdx['金'], '戌': elemIdx['土'], '亥': elemIdx['水'],
+};
+
+// —— 归一化为 100%（四舍五入+余数分配，避免总和≠100）——
+function normalizePercents(vals: number[]): number[] {
+  const sum = vals.reduce((a,b)=>a+b,0) || 1;
+  const raw = vals.map(v => (v / sum) * 100);
+  const rounded = raw.map(v => Math.round(v));
+  let diff = 100 - rounded.reduce((a,b)=>a+b, 0);
+  const fracs = raw.map((v,i)=>({i, frac: v - Math.floor(v)})).sort((a,b)=>b.frac-a.frac);
+  let k = 0;
+  while (diff !== 0 && fracs.length) {
+    const idx = fracs[k % fracs.length].i;
+    rounded[idx] += (diff > 0 ? 1 : -1);
+    diff += (diff > 0 ? -1 : 1);
+    k++;
+  }
+  return rounded;
+}
+
+// —— 从四柱计算五行占比（可调权重：干 0.6 / 支 0.4）——
+function computeFiveFromBazi(gzYear: string, gzMonth: string, gzDay: string, gzHour: string, stemWeight=0.6, branchWeight=0.4): number[] {
+  const pillars = [gzYear, gzMonth, gzDay, gzHour].filter(Boolean);
+  const acc = [0,0,0,0,0]; // 金木水火土
+  for (const p of pillars) {
+    const s = p.charAt(0); const b = p.charAt(1);
+    const si = stemElem[s]; const bi = branchElem[b];
+    if (si!=null) acc[si] += stemWeight;
+    if (bi!=null) acc[bi] += branchWeight;
+  }
+  return normalizePercents(acc);
+}
+
+// ... other code ...
+
+// Assuming activeProfile is a ref or reactive object available here
+// Also assuming derivedDayStem and derivedHourPillar are computed defined somewhere above
+
+// —— 当前档案的四柱（用于五行图 & 展示）——
+const activeBazi = computed(() => {
+  const p = activeProfile.value;
+  if (!p) return null;
+  if (!p.birthDate || !p.birthTime || !p.tz) return null;
+  const iso = `${p.birthDate}T${p.birthTime}`;
+  const m = p.useTrueSolar && p.longitude != null
+    ? toTrueSolar(iso, p.tz, p.longitude)
+    : (dayjs as any).tz(iso, p.tz);
+  const l: any = solarLunar.solar2lunar(m.year(), m.month()+1, m.date());
+  const gzYear = l.gzYear ?? '';
+  const gzMonth = l.gzMonth ?? '';
+  const gzDay = l.gzDay ?? '';
+  const gzHour = getHourPillar((gzDay||'丁').charAt(0), m.hour());
+  return { gzYear, gzMonth, gzDay, gzHour };
+});
+
+// ... other code ...
+
+function renderFiveChart() {
+  let data = [20,20,20,20,20];
+  if (activeBazi.value) {
+    const { gzYear, gzMonth, gzDay, gzHour } = activeBazi.value;
+    data = computeFiveFromBazi(gzYear, gzMonth, gzDay, gzHour);
+  } else {
+    // 兼容：若档案信息不全，降级为日主示例
+    data = fiveFromDayStem(derivedDayStem.value);
+  }
+  // ... use data to render chart ...
+}
+
+// ... other code ...
+
+watch([derivedDayStem, activeBazi], ()=>{ renderFiveChart(); });
+
+// ... other code ...
+
+const formPreview = computed(() => {
+  const p = activeProfile.value;
+  if (!p) return null;
+  const dStem = derivedDayStem.value;
+  const hourPillar = derivedHourPillar.value;
+  const bazi = activeBazi.value;
+  if (!bazi) return null;
+  const { gzYear, gzMonth, gzDay, gzHour } = bazi;
+  // const energy = fiveFromDayStem(dStem);
+  const energy = computeFiveFromBazi(gzYear, gzMonth, gzDay, hourPillar);
+  // ... other preview computations ...
+  return {
+    // ... other preview data ...
+    energy,
+  };
+});
+
+// ... other code ...
+</script>
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <title>高维助理 · 万年历</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
