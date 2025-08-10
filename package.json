@@ -7,8 +7,17 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "setup:github": "bash -c 'USER_NAME=\"Steven Cao\"; USER_EMAIL=\"stevencao2015@gmail.com\"; BRANCH=main; REPO_URL=\"git@github.com:stevencao2020/gaowei-assistant.git\"; git config --global user.name \"$USER_NAME\"; git config --global user.email \"$USER_EMAIL\"; if [ ! -d .git ]; then git init; fi; git remote remove origin 2>/dev/null || true; git remote add origin \"$REPO_URL\"; git branch -M \"$BRANCH\"; git add .; git commit -m \"Initial commit\" || true; git push -u origin \"$BRANCH\";'"
-    "fix:ssh443": "bash -lc 'mkdir -p ~/.ssh && { echo Host github.com; echo Hostname ssh.github.com; echo Port 443; echo User git; echo ServerAliveInterval 60; } > ~/.ssh/config && chmod 600 ~/.ssh/config && ssh -T git@github.com || true'"
+    "fix:ssh443": "bash -lc 'mkdir -p ~/.ssh && printf \"%s\\n\" \"Host github.com\" \"  Hostname ssh.github.com\" \"  Port 443\" \"  User git\" \"  ServerAliveInterval 60\" > ~/.ssh/config && chmod 600 ~/.ssh/config && ssh -T git@github.com || true'",
+    "setup:github": "bash -lc 'USER_NAME=\"Steven Cao\"; USER_EMAIL=\"stevencao2015@gmail.com\"; BRANCH=main; REPO_URL=\"git@github.com:stevencao2020/gaowei-assistant.git\"; git config --global user.name \"$USER_NAME\"; git config --global user.email \"$USER_EMAIL\"; if [ ! -d .git ]; then git init; fi; git remote remove origin 2>/dev/null || true; git remote add origin \"$REPO_URL\"; git branch -M \"$BRANCH\"; git add .; git commit -m \"Initial commit\" || true; git push -u origin \"$BRANCH\";'",
+    "pub": "bash -lc 'MSG=${npm_config_m:-chore: update}; BR=$(git rev-parse --abbrev-ref HEAD); git add -A && git commit -m \"$MSG\" || true; git pull --rebase origin \"$BR\" || true; git push -u origin \"$BR\"'",
+    "pull": "bash -lc 'BR=$(git rev-parse --abbrev-ref HEAD); git pull --rebase origin \"$BR\"'",
+    "ver:patch": "bash -lc 'npm version patch -m \"chore(release): %s\" && git push && git push --tags'",
+    "ver:minor": "bash -lc 'npm version minor -m \"chore(release): %s\" && git push && git push --tags'",
+    "ver:major": "bash -lc 'npm version major -m \"chore(release): %s\" && git push && git push --tags'",
+    "tag": "bash -lc 'V=${npm_config_v:-$(date +%Y.%m.%d-%H%M)}; git tag -a \"v$V\" -m \"release: v$V\"; git push origin \"v$V\"'",
+    "pub:tag": "bash -lc 'MSG=${npm_config_m:-chore: update}; BR=$(git rev-parse --abbrev-ref HEAD); git add -A && git commit -m \"$MSG\" || true; git pull --rebase origin \"$BR\" || true; git push -u origin \"$BR\"; npm version patch -m \"chore(release): %s\"; git push origin \"$BR\" --tags'",
+    "changelog": "bash -lc 'git log --pretty=format:\"* %h %s (%an, %ad)\" --date=short -n 50 > CHANGELOG.md && echo \"Wrote CHANGELOG.md\"'",
+    "sync": "bash -lc 'git fetch --all --prune'"
   },
   "dependencies": {
     "chart.js": "^4.5.0",
