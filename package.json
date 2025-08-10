@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:github": "bash -c 'USER_NAME=\"Steven Cao\"; USER_EMAIL=\"stevencao2015@gmail.com\"; BRANCH=main; REPO_URL=\"git@github.com:stevencao2020/gaowei-assistant.git\"; git config --global user.name \"$USER_NAME\"; git config --global user.email \"$USER_EMAIL\"; if [ ! -d .git ]; then git init; fi; git remote remove origin 2>/dev/null || true; git remote add origin \"$REPO_URL\"; git branch -M \"$BRANCH\"; git add .; git commit -m \"Initial commit\" || true; git push -u origin \"$BRANCH\";'"
+    "fix:ssh443": "bash -lc 'mkdir -p ~/.ssh && { echo Host github.com; echo Hostname ssh.github.com; echo Port 443; echo User git; echo ServerAliveInterval 60; } > ~/.ssh/config && chmod 600 ~/.ssh/config && ssh -T git@github.com || true'"
   },
   "dependencies": {
     "chart.js": "^4.5.0",
