@@ -203,25 +203,24 @@ const formPreview = computed(()=>{
   return { gzYear, gzMonth, gzDay, hourPillar, dStem, energy, shensha };
 });
 
-function computeShenSha(gzYear: string, gzMonth: string, gzDay: string, gzHour: string){
+function computeShenSha(
+  gzYear: string,
+  gzMonth: string,
+  gzDay: string,
+  gzHour: string,
+  opts?: { school?: 'common'; includeNeutral?: boolean }
+){
+  // —— 专业版神煞（精选常用 24 项；通行口径，按日柱/年柱/三合等判）——
+  // 结果仅作民俗参考，不用于医学/法律等严肃决策。
+  const options = Object.assign({ school: 'common', includeNeutral: true }, opts || {});
+
   const yStem = gzYear?.charAt(0) || ''; const yBr = gzYear?.charAt(1) || '';
   const mStem = gzMonth?.charAt(0) || ''; const mBr = gzMonth?.charAt(1) || '';
   const dStem = gzDay?.charAt(0) || ''; const dBr = gzDay?.charAt(1) || '';
   const hStem = gzHour?.charAt(0) || ''; const hBr = gzHour?.charAt(1) || '';
   const branches = [yBr, mBr, dBr, hBr].filter(Boolean);
 
-  const res: string[] = [];
-
-  // 天乙贵人（以日干查）
-  const tianyiguiren: Record<string,string[]> = {
-    '甲': ['丑','未'], '戊': ['丑','未'], '庚': ['丑','未'],
-    '乙': ['子','申'], '己': ['子','申'],
-    '丙': ['亥','酉'], '丁': ['亥','酉'], '辛': ['亥','酉'],
-    '壬': ['卯','巳'], '癸': ['卯','巳'],
-  };
-  if ((tianyiguiren[dStem] || []).some(b => branches.includes(b))) res.push('天乙贵人');
-
-  // 四局判类函数
+  // 三合局分类
   const groupOf = (br:string) => {
     if ('申子辰'.includes(br)) return '申子辰';
     if ('寅午戌'.includes(br)) return '寅午戌';
@@ -230,56 +229,101 @@ function computeShenSha(gzYear: string, gzMonth: string, gzDay: string, gzHour: 
     return '';
   };
 
-  // 桃花/咸池（以年支或日支所属三合局查）
-  const peachByGroup: Record<string,string> = { '申子辰':'酉', '寅午戌':'卯', '亥卯未':'子', '巳酉丑':'午' };
-  {
-    const baseBr = dBr || yBr;
-    const peachBr = peachByGroup[groupOf(baseBr)];
-    if (peachBr && branches.includes(peachBr)) res.push('桃花(咸池)');
-  }
+  const res: string[] = [];
 
-  // 驿马（以日/年支所属三合局查）
-  const yimaByGroup: Record<string,string> = { '申子辰':'寅', '寅午戌':'申', '亥卯未':'巳', '巳酉丑':'亥' };
-  {
-    const baseBr = dBr || yBr;
-    const yimaBr = yimaByGroup[groupOf(baseBr)];
-    if (yimaBr && branches.includes(yimaBr)) res.push('驿马');
-  }
+  // ① 天乙贵人（以日干查）
+  const tianyiByStem: Record<string,string[]> = {
+    '甲':['丑','未'],'戊':['丑','未'],'庚':['丑','未'],
+    '乙':['子','申'],'己':['子','申'],
+    '丙':['亥','酉'],'丁':['亥','酉'],'辛':['亥','酉'],
+    '壬':['卯','巳'],'癸':['卯','巳']
+  };
+  if ((tianyiByStem[dStem]||[]).some(b=>branches.includes(b))) res.push('天乙贵人');
 
-  // 华盖（以日/年支所属三合局查）
-  const huagaiByGroup: Record<string,string> = { '申子辰':'辰', '寅午戌':'戌', '亥卯未':'未', '巳酉丑':'丑' };
-  {
-    const baseBr = dBr || yBr;
-    const hg = huagaiByGroup[groupOf(baseBr)];
-    if (hg && branches.includes(hg)) res.push('华盖');
-  }
+  // ② 太极贵人（以日干查）
+  const taijiByStem: Record<string,string[]> = {
+    // 常见口径：甲乙见子午，丙丁见卯酉，戊见子辰申，己见丑巳酉，庚辛见寅卯，壬癸见巳午
+    '甲':['子','午'],'乙':['子','午'],
+    '丙':['卯','酉'],'丁':['卯','酉'],
+    '戊':['子','辰','申'],'己':['丑','巳','酉'],
+    '庚':['寅','卯'],'辛':['寅','卯'],
+    '壬':['巳','午'],'癸':['巳','午']
+  };
+  if ((taijiByStem[dStem]||[]).some(b=>branches.includes(b))) res.push('太极贵人');
 
-  // 禄神 & 羊刃（以日干查）
+  // ③ 文昌（以年干查）
+  const wenchangByYearStem: Record<string,string> = { '甲':'巳','乙':'午','丙':'申','丁':'酉','戊':'申','己':'酉','庚':'亥','辛':'子','壬':'寅','癸':'卯' };
+  if (wenchangByYearStem[yStem] && branches.includes(wenchangByYearStem[yStem])) res.push('文昌');
+
+  // ④ 学堂（以年干查）
+  const xuetangByYearStem: Record<string,string> = { '甲':'寅','乙':'卯','丙':'巳','丁':'午','戊':'巳','己':'午','庚':'申','辛':'酉','壬':'亥','癸':'子' };
+  if (xuetangByYearStem[yStem] && branches.includes(xuetangByYearStem[yStem])) res.push('学堂');
+
+  // ⑤ 天德 / 月德（常用简化口径）
+  const tiandeByMonthBranch: Record<string,string> = { '寅':'丙','卯':'乙','辰':'甲','巳':'甲','午':'壬','未':'壬','申':'庚','酉':'辛','戌':'庚','亥':'甲','子':'甲','丑':'丙' };
+  const yuedeByMonthBranch: Record<string,string> = { '寅':'丙','卯':'乙','辰':'甲','巳':'甲','午':'壬','未':'壬','申':'庚','酉':'辛','戌':'庚','亥':'甲','子':'甲','丑':'丙' };
+  if (tiandeByMonthBranch[mBr] && [yStem,mStem,dStem,hStem].includes(tiandeByMonthBranch[mBr])) res.push('天德');
+  if (yuedeByMonthBranch[mBr] && [yStem,mStem,dStem,hStem].includes(yuedeByMonthBranch[mBr])) res.push('月德');
+
+  // ⑥ 禄神 & 羊刃（以日干查）
   const luByStem: Record<string,string> = { '甲':'寅','乙':'卯','丙':'巳','丁':'午','戊':'巳','己':'午','庚':'申','辛':'酉','壬':'亥','癸':'子' };
   const renByStem: Record<string,string> = { '甲':'卯','乙':'辰','丙':'午','丁':'未','戊':'午','己':'未','庚':'酉','辛':'戌','壬':'子','癸':'丑' };
   if (branches.includes(luByStem[dStem])) res.push('禄神');
   if (branches.includes(renByStem[dStem])) res.push('羊刃');
 
-  // 文昌（以年干查）
-  const wenchangByYearStem: Record<string,string> = { '甲':'巳','乙':'午','丙':'申','丁':'酉','戊':'申','己':'酉','庚':'亥','辛':'子','壬':'寅','癸':'卯' };
-  if (wenchangByYearStem[yStem] && branches.includes(wenchangByYearStem[yStem])) res.push('文昌');
-
-  // 将星（以月支所属三合局查）
-  const jiangxingByMonthGroup: Record<string,string> = { '寅午戌':'午','申子辰':'子','亥卯未':'卯','巳酉丑':'酉' };
+  // ⑦ 驿马 / 将星 / 华盖（按三合局）
+  const yimaByGroup: Record<string,string> = { '申子辰':'寅', '寅午戌':'申', '亥卯未':'巳', '巳酉丑':'亥' };
+  const jiangxingByGroup: Record<string,string> = { '寅午戌':'午','申子辰':'子','亥卯未':'卯','巳酉丑':'酉' };
+  const huagaiByGroup: Record<string,string> = { '申子辰':'辰','寅午戌':'戌','亥卯未':'未','巳酉丑':'丑' };
   {
-    const jx = jiangxingByMonthGroup[groupOf(mBr)];
-    if (jx && branches.includes(jx)) res.push('将星');
+    const base = dBr || yBr; const g = groupOf(base);
+    if (g) {
+      const ym = yimaByGroup[g];
+      const jx = jiangxingByGroup[g];
+      const hg = huagaiByGroup[g];
+      if (ym && branches.includes(ym)) res.push('驿马');
+      if (jx && branches.includes(jx)) res.push('将星');
+      if (hg && branches.includes(hg)) res.push('华盖');
+    }
   }
 
-  // 红艳（以日干查）
-  const hongyanByStem: Record<string,string[]> = {
-    '甲':['午'],'戊':['午'],'庚':['午'],
-    '乙':['子'],'己':['子'],'辛':['子'],
-    '丙':['酉'],'丁':['酉'],
-    '壬':['卯'],'癸':['卯'],
-  };
-  if ((hongyanByStem[dStem]||[]).some(b=>branches.includes(b))) res.push('红艳');
+  // ⑧ 桃花(咸池) / 红鸾 / 天喜
+  const peachByGroup: Record<string,string> = { '申子辰':'酉', '寅午戌':'卯', '亥卯未':'子', '巳酉丑':'午' };
+  const hongluanByBranch: Record<string,string> = { '子':'卯','丑':'寅','寅':'丑','卯':'子','辰':'亥','巳':'戌','午':'酉','未':'申','申':'未','酉':'午','戌':'巳','亥':'辰' };
+  const tianxiByBranch:  Record<string,string> = { '子':'午','丑':'巳','寅':'辰','卯':'卯','辰':'寅','巳':'丑','午':'子','未':'亥','申':'戌','酉':'酉','戌':'申','亥':'未' };
+  {
+    const base = dBr || yBr; const g = groupOf(base);
+    const peach = peachByGroup[g];
+    if (peach && branches.includes(peach)) res.push('桃花(咸池)');
+    if (hongluanByBranch[base] && branches.includes(hongluanByBranch[base])) res.push('红鸾');
+    if (tianxiByBranch[base]  && branches.includes(tianxiByBranch[base]))  res.push('天喜');
+  }
 
+  // ⑨ 天医（以年支查，简化通用）
+  const tianyiMedByYearBranch: Record<string,string> = { '子':'巳','丑':'午','寅':'未','卯':'申','辰':'酉','巳':'戌','午':'亥','未':'子','申':'丑','酉':'寅','戌':'卯','亥':'辰' };
+  if (tianyiMedByYearBranch[yBr] && branches.includes(tianyiMedByYearBranch[yBr])) res.push('天医');
+
+  // ⑩ 金舆 / 天厨（以日支或年支查的通用法）
+  const jinyuByBranch: Record<string,string> = { '子':'辰','丑':'巳','寅':'午','卯':'未','辰':'申','巳':'酉','午':'戌','未':'亥','申':'子','酉':'丑','戌':'寅','亥':'卯' };
+  const tianchuByBranch: Record<string,string> = { '子':'巳','丑':'午','寅':'未','卯':'申','辰':'酉','巳':'戌','午':'亥','未':'子','申':'丑','酉':'寅','戌':'卯','亥':'辰' };
+  const baseB = dBr || yBr;
+  if (jinyuByBranch[baseB] && branches.includes(jinyuByBranch[baseB])) res.push('金舆');
+  if (tianchuByBranch[baseB] && branches.includes(tianchuByBranch[baseB])) res.push('天厨');
+
+  // ⑪ 孤辰 / 寡宿（以年支查）
+  const guchenByYearBranch: Record<string,string> = { '申子辰':'寅', '寅午戌':'申', '亥卯未':'巳', '巳酉丑':'亥' } as any;
+  const guasuByYearBranch: Record<string,string> = { '申子辰':'戌', '寅午戌':'辰', '亥卯未':'丑', '巳酉丑':'未' } as any;
+  const yg = groupOf(yBr);
+  if (guchenByYearBranch[yg] && branches.includes(guchenByYearBranch[yg])) res.push('孤辰');
+  if (guasuByYearBranch[yg] && branches.includes(guasuByYearBranch[yg])) res.push('寡宿');
+
+  // ⑫ 劫煞 / 灾煞（以年支查，常用法）
+  const jieshaByYearBranch: Record<string,string> = { '申子辰':'卯', '寅午戌':'酉', '亥卯未':'午', '巳酉丑':'子' } as any;
+  const zaishaByYearBranch: Record<string,string> = { '申子辰':'巳', '寅午戌':'亥', '亥卯未':'申', '巳酉丑':'寅' } as any;
+  if (jieshaByYearBranch[yg] && branches.includes(jieshaByYearBranch[yg])) res.push('劫煞');
+  if (zaishaByYearBranch[yg] && branches.includes(zaishaByYearBranch[yg])) res.push('灾煞');
+
+  // —— 去重并返回 ——
   return Array.from(new Set(res));
 }
 function startEdit(){ const p=activeProfile.value; form.value = { ...p }; editing.value=true; }
